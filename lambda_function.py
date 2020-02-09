@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-
-# This sample demonstrates handling intents from an Alexa skill using the Alexa Skills Kit SDK for Python.
-# Please visit https://alexa.design/cookbook for additional examples on implementing slots, dialog management,
-# session persistence, api calls, and more.
-# This sample is built using the handler classes approach in skill builder.
 import logging
 import ask_sdk_core.utils as ask_utils
 import json
@@ -44,25 +38,63 @@ class HelloWorldIntentHandler(AbstractRequestHandler):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("HelloWorldIntent")(handler_input)
 
+        
     def handle(self, handler_input):
         slots = handler_input.request_envelope.request.intent.slots
-        feeling = slots["FEELING"].value
+        feeling= slots["FEELING"].value
 
              # type: (HandlerInput) -> Response
         speak_output = ("okay you "+ feeling+ " piece of shit")
-        text = "baba black sheep"
-        print(json.dumps(comprehend.detect_sentiment(Text=text, LanguageCode='en'), sort_keys=True))
-        s = json.dumps(json.dumps(comprehend.detect_sentiment(Text=text, LanguageCode='en'), sort_keys=True))
         return (
             handler_input.response_builder
-                .speak(speak_output + s)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .speak(speak_output)
+                .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .response
+        )
+    
+class SituationIntentHandler(AbstractRequestHandler):
+    """Handler for Hello World Intent."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("SituationIntent")(handler_input)
+    
+    def handle(self, handler_input):
+        def getSentiment(text):
+            comprehend = boto3.client(service_name='comprehend')
+            return(json.dumps(comprehend.detect_sentiment(Text=text, LanguageCode='en'), sort_keys=True))
+        slots = handler_input.request_envelope.request.intent.slots
+        situation = slots["SITUATION"].value
+        sentiment = json.loads(getSentiment(situation))
+        s = sentiment['Sentiment']
+             # type: (HandlerInput) -> Response
+        speak_output = ("That's pretty " + s)
+        
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .response
+        )    
+class OpinionIntentHandler(AbstractRequestHandler):
+    """Handler for Help Intent."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("OpinionIntent")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        speak_output = "I don't know bro, what do you think?"
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
                 .response
         )
 
-
 class HelpIntentHandler(AbstractRequestHandler):
     """Handler for Help Intent."""
+    
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
@@ -111,29 +143,6 @@ class SessionEndedRequestHandler(AbstractRequestHandler):
         return handler_input.response_builder.response
 
 
-class IntentReflectorHandler(AbstractRequestHandler):
-    """The intent reflector is used for interaction model testing and debugging.
-    It will simply repeat the intent the user said. You can create custom handlers
-    for your intents by defining them above, then also adding them to the request
-    handler chain below.
-    """
-    def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
-        return ask_utils.is_request_type("IntentRequest")(handler_input)
-
-    def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-        intent_name = ask_utils.get_intent_name(handler_input)
-        speak_output = "You just triggered " + intent_name + "."
-
-        return (
-            handler_input.response_builder
-                .speak(speak_output)
-                # .ask("add a reprompt if you want to keep the session open for the user to respond")
-                .response
-        )
-
-
 class CatchAllExceptionHandler(AbstractExceptionHandler):
     """Generic error handling to capture any syntax or routing errors. If you receive an error
     stating the request handler chain is not found, you have not implemented a handler for
@@ -168,8 +177,8 @@ sb.add_request_handler(HelloWorldIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
-sb.add_request_handler(IntentReflectorHandler()) # make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
-
+sb.add_request_handler(OpinionIntentHandler())
+sb.add_request_handler(SituationIntentHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
 
 lambda_handler = sb.lambda_handler()
