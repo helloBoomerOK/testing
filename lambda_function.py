@@ -41,33 +41,56 @@ class HelloWorldIntentHandler(AbstractRequestHandler):
         
     def handle(self, handler_input):
         slots = handler_input.request_envelope.request.intent.slots
-        feeling= slots["FEELING"].value
-
+        feelingName = slots["FEELING"].resolutions.resolutions_per_authority[0].values[0].value.name
+        feelingValue = slots["FEELING"].name
+        
+        
              # type: (HandlerInput) -> Response
-        speak_output = ("okay you "+ feeling+ " piece of shit")
+        speak_output = ("Oh you're " + feelingName)
+        reprompt = "Would you mind telling me some more?"
         return (
             handler_input.response_builder
                 .speak(speak_output)
-                .ask("add a reprompt if you want to keep the session open for the user to respond")
+                .ask(reprompt)
                 .response
         )
     
 class SituationIntentHandler(AbstractRequestHandler):
-    """Handler for Hello World Intent."""
+
     def can_handle(self, handler_input):
         # type: (HandlerInput) -> bool
         return ask_utils.is_intent_name("SituationIntent")(handler_input)
     
     def handle(self, handler_input):
+        def myToYour(heard):
+          stringAr = heard.strip().split(" ")  
+          for i in range(len(stringAr)):
+            if stringAr[i] == "my":
+              stringAr[i] = "your"  
+            output = ""  
+            for w in stringAr:
+                output = output + w + " "  
+            output.strip()  
+            return output
         def getSentiment(text):
-            comprehend = boto3.client(service_name='comprehend')
             return(json.dumps(comprehend.detect_sentiment(Text=text, LanguageCode='en'), sort_keys=True))
+        def getKeyWords(text):
+            return(json.dumps(comprehend.detect_key_phrases(Text=text, LanguageCode='en'), sort_keys=True))
         slots = handler_input.request_envelope.request.intent.slots
         situation = slots["SITUATION"].value
         sentiment = json.loads(getSentiment(situation))
-        s = sentiment['Sentiment']
+        keyWords = json.loads(getKeyWords(situation))
+        s = sentiment ['Sentiment']
              # type: (HandlerInput) -> Response
-        speak_output = ("That's pretty " + s)
+        if (s=="NEGATIVE"):
+            speak_output = "I'm so sorry to hear that..."
+        if (s=="POSITIVE"):
+            speak_output = "I'm so glad to hear that..."
+        if (s=='NEUTRAL'):
+            speak_output="Hmmmmm...."
+        if (keyWords['KeyPhrases']):
+            k = (((keyWords ['KeyPhrases'])[0])['Text'])
+            speak_output = speak_output + (myToYour(k) + "?")
         
         return (
             handler_input.response_builder
@@ -75,6 +98,22 @@ class SituationIntentHandler(AbstractRequestHandler):
                 .ask("add a reprompt if you want to keep the session open for the user to respond")
                 .response
         )    
+class AffirmationIntentHandler(AbstractRequestHandler):
+    """Handler for Help Intent."""
+    def can_handle(self, handler_input):
+        # type: (HandlerInput) -> bool
+        return ask_utils.is_intent_name("AffirmationIntent")(handler_input)
+
+    def handle(self, handler_input):
+        # type: (HandlerInput) -> Response
+        speak_output = "Would you like to tell me some more?"
+
+        return (
+            handler_input.response_builder
+                .speak(speak_output)
+                .ask(speak_output)
+                .response
+        )
 class OpinionIntentHandler(AbstractRequestHandler):
     """Handler for Help Intent."""
     def can_handle(self, handler_input):
@@ -91,7 +130,6 @@ class OpinionIntentHandler(AbstractRequestHandler):
                 .ask(speak_output)
                 .response
         )
-
 class HelpIntentHandler(AbstractRequestHandler):
     """Handler for Help Intent."""
     
@@ -156,7 +194,7 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
         # type: (HandlerInput, Exception) -> Response
         logger.error(exception, exc_info=True)
 
-        speak_output = "ERROOOOOOOOR"
+        speak_output = "I'm sorry, I don't really know what you mean..."
         
         return (
             handler_input.response_builder
@@ -178,6 +216,7 @@ sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
 sb.add_request_handler(OpinionIntentHandler())
+sb.add_request_handler(AffirmationIntentHandler())
 sb.add_request_handler(SituationIntentHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
 
